@@ -42,9 +42,11 @@ func (a *App) InitializeRoutes() {
 func (a *App) CreateShortlink(writer http.ResponseWriter, request *http.Request) {
 	var req ShortenReq
 	if err := json.NewDecoder(request.Body).Decode(&req); err != nil {
+		ResponseWithError(writer, StatusError{http.StatusBadRequest, fmt.Errorf("parse parameters failed %v", request.Body)})
 		return
 	}
 	if err := validator.Validate(req); err != nil {
+		ResponseWithError(writer, StatusError{http.StatusBadRequest, fmt.Errorf("validate parameters failed %v", req)})
 		return
 	}
 	defer request.Body.Close()
@@ -60,6 +62,23 @@ func (a *App) GetShortlinkInfo(writer http.ResponseWriter, request *http.Request
 func (a *App) Redirect(writer http.ResponseWriter, request *http.Request) {
 	parameters := mux.Vars(request)
 	fmt.Printf("%s\n", parameters["shortlink"])
+}
+
+func ResponseWithError(writer http.ResponseWriter, err error) {
+	switch e := err.(type) {
+	case Error:
+		log.Printf("HTTP %d - %s", e.Status(), e)
+		ResponseWithJSON(writer, e.Status(), e.Error())
+	default:
+		ResponseWithJSON(writer, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+	}
+}
+
+func ResponseWithJSON(writer http.ResponseWriter, code int, payload interface{}) {
+	resp, _ := json.Marshal(payload)
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(code)
+	writer.Write(resp)
 }
 
 // Run start listen and server
