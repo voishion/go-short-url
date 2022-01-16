@@ -7,23 +7,24 @@ import (
 	"fmt"
 	"github.com/go-redis/redis/v8"
 	"github.com/mattheath/base62"
+	"github.com/speps/go-hashids"
 	"time"
 )
 
 var ctx = context.Background()
 
 const (
-	// URL_ID_KEY is global counter
-	URL_ID_KEY = "next:url:id"
+	// UrlIdKey is global counter
+	UrlIdKey = "next:url:id"
 
-	// SHORT_LINK_URL_KEY is mapping the short-link to the url
-	SHORT_LINK_URL_KEY = "short_link:%s:url"
+	// ShortLinkUrlKey is mapping the short-link to the url
+	ShortLinkUrlKey = "short_link:%s:url"
 
-	// SHORT_LINK_DETAIL_KEY is mapping the short-link to the detail of url
-	SHORT_LINK_DETAIL_KEY = "short_link:%s:detail"
+	// ShortLinkDetailKey is mapping the short-link to the detail of url
+	ShortLinkDetailKey = "short_link:%s:detail"
 
-	// URL_HASH_KEY is mapping the hash of the url to the short-link
-	URL_HASH_KEY = "url_hash:%s:url"
+	// UrlHashKey is mapping the hash of the url to the short-link
+	UrlHashKey = "url_hash:%s:url"
 )
 
 // RedisClient contains a redis client
@@ -53,10 +54,10 @@ func NewRedisClient(addr string, passwd string, db int) *RedisClient {
 // Shorten convert url to shortlink
 func (r *RedisClient) Shorten(url string, exp int64) (string, error) {
 	// convent url to sha1 hash
-	h := toSha1(url)
+	h := toHash(url)
 
 	// fetch it if the url is cached
-	d, err := r.Client.Get(ctx, fmt.Sprintf(URL_HASH_KEY, h)).Result()
+	d, err := r.Client.Get(ctx, fmt.Sprintf(UrlHashKey, h)).Result()
 	if err == redis.Nil {
 		// not existed, nothing to do
 	} else if err != nil {
@@ -70,26 +71,26 @@ func (r *RedisClient) Shorten(url string, exp int64) (string, error) {
 	}
 
 	// increase the global counter
-	err = r.Client.Incr(ctx, URL_ID_KEY).Err()
+	err = r.Client.Incr(ctx, UrlIdKey).Err()
 	if err != nil {
 		return "", err
 	}
 
 	// encode global counter to base62
-	id, err := r.Client.Get(ctx, URL_ID_KEY).Int64()
+	id, err := r.Client.Get(ctx, UrlIdKey).Int64()
 	if err != nil {
 		return "", err
 	}
 	eid := base62.EncodeInt64(id)
 
 	// store the url against this encoded id
-	err = r.Client.Set(ctx, fmt.Sprintf(SHORT_LINK_URL_KEY, eid), url, time.Minute*time.Duration(exp)).Err()
+	err = r.Client.Set(ctx, fmt.Sprintf(ShortLinkUrlKey, eid), url, time.Minute*time.Duration(exp)).Err()
 	if err != nil {
 		return "", err
 	}
 
 	// store the url against the hash of it
-	err = r.Client.Set(ctx, fmt.Sprintf(URL_HASH_KEY, h), eid, time.Minute*time.Duration(exp)).Err()
+	err = r.Client.Set(ctx, fmt.Sprintf(UrlHashKey, h), eid, time.Minute*time.Duration(exp)).Err()
 	if err != nil {
 		return "", err
 	}
@@ -103,7 +104,7 @@ func (r *RedisClient) Shorten(url string, exp int64) (string, error) {
 	}
 
 	// store the url detail against this encoded id
-	err = r.Client.Set(ctx, fmt.Sprintf(SHORT_LINK_DETAIL_KEY, eid), detail, time.Minute*time.Duration(exp)).Err()
+	err = r.Client.Set(ctx, fmt.Sprintf(ShortLinkDetailKey, eid), detail, time.Minute*time.Duration(exp)).Err()
 	if err != nil {
 		return "", err
 	}
@@ -113,7 +114,7 @@ func (r *RedisClient) Shorten(url string, exp int64) (string, error) {
 
 // ShortlinkInfo returns the detail of the shortlink
 func (r *RedisClient) ShortlinkInfo(eid string) (interface{}, error) {
-	d, err := r.Client.Get(ctx, fmt.Sprintf(SHORT_LINK_DETAIL_KEY, eid)).Result()
+	d, err := r.Client.Get(ctx, fmt.Sprintf(ShortLinkDetailKey, eid)).Result()
 	if err == redis.Nil {
 		return "", StatusError{404, errors.New("unknown short-link")}
 	} else if err != nil {
@@ -125,7 +126,7 @@ func (r *RedisClient) ShortlinkInfo(eid string) (interface{}, error) {
 
 // Unshorten convent short-link to url
 func (r *RedisClient) Unshorten(eid string) (string, error) {
-	url, err := r.Client.Get(ctx, fmt.Sprintf(SHORT_LINK_URL_KEY, eid)).Result()
+	url, err := r.Client.Get(ctx, fmt.Sprintf(ShortLinkUrlKey, eid)).Result()
 	if err == redis.Nil {
 		return "", StatusError{404, errors.New(fmt.Sprintf("%s short-link expired", eid))}
 	} else if err != nil {
@@ -135,6 +136,11 @@ func (r *RedisClient) Unshorten(eid string) (string, error) {
 	}
 }
 
-func toSha1(url string) interface{} {
-	return nil
+func toHash(url string) interface{} {
+	hd := hashids.NewData()
+	hd.Salt = url
+	hd.MinLength = 0
+	h, _ := hashids.NewWithData(hd)
+	r, _ := h.Encode([]int{45, 434, 1313, 99})
+	return r
 }

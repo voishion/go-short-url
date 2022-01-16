@@ -6,11 +6,17 @@
 
 ![Mux处理router和handler](docs/images/Mux处理router和handler.png)
 
-## 2、Mux处理router和handler
+## 2、编译代码
+
+```shell
+#进入main文件目录下，执行编译
+go build -o app
+#执行编译后的文件
+./app
+```
 
 ## 3、Mux处理router和handler
 
 ## 4、Mux处理router和handler
 
 ## 5、Mux处理router和handler
-
