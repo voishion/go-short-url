@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/go-redis/redis/v8"
 	"github.com/mattheath/base62"
@@ -108,6 +109,30 @@ func (r *RedisClient) Shorten(url string, exp int64) (string, error) {
 	}
 
 	return eid, nil
+}
+
+// ShortlinkInfo returns the detail of the shortlink
+func (r *RedisClient) ShortlinkInfo(eid string) (interface{}, error) {
+	d, err := r.Client.Get(ctx, fmt.Sprintf(SHORT_LINK_DETAIL_KEY, eid)).Result()
+	if err == redis.Nil {
+		return "", StatusError{404, errors.New("unknown short-link")}
+	} else if err != nil {
+		return "", err
+	} else {
+		return d, nil
+	}
+}
+
+// Unshorten convent short-link to url
+func (r *RedisClient) Unshorten(eid string) (string, error) {
+	url, err := r.Client.Get(ctx, fmt.Sprintf(SHORT_LINK_URL_KEY, eid)).Result()
+	if err == redis.Nil {
+		return "", StatusError{404, errors.New(fmt.Sprintf("%s short-link expired", eid))}
+	} else if err != nil {
+		return "", err
+	} else {
+		return url, nil
+	}
 }
 
 func toSha1(url string) interface{} {
