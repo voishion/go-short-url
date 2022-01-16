@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/justinas/alice"
+	"go-short-url/src/middleware"
 	"gopkg.in/validator.v2"
 	"log"
 	"net/http"
@@ -11,7 +13,8 @@ import (
 
 // App encapsulates Env, Router and middleware
 type App struct {
-	Router *mux.Router
+	Router     *mux.Router
+	Middleware *middleware.Middleware
 }
 
 // ShortenReq 短链请求体
@@ -30,13 +33,20 @@ func (a *App) Initialize() {
 	// Set log formatter
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	a.Router = mux.NewRouter()
+	a.Middleware = &middleware.Middleware{}
 	a.InitializeRoutes()
 }
 
 func (a *App) InitializeRoutes() {
-	a.Router.HandleFunc("/api/shorten", a.CreateShortlink).Methods("POST")
-	a.Router.HandleFunc("/api/info", a.GetShortlinkInfo).Methods("POST")
-	a.Router.HandleFunc("/{shortlink:[a-zA-Z0-9]{1,11}}", a.Redirect).Methods("GET")
+	//a.Router.HandleFunc("/api/shorten", a.CreateShortlink).Methods("POST")
+	//a.Router.HandleFunc("/api/info", a.GetShortlinkInfo).Methods("GET")
+	//a.Router.HandleFunc("/{shortlink:[a-zA-Z0-9]{1,11}}", a.Redirect).Methods("GET")
+
+	// Alice包的使用，合并中间件
+	m := alice.New(a.Middleware.LoggingHandler, a.Middleware.RecoverHandler)
+	a.Router.Handle("/api/shorten", m.ThenFunc(a.CreateShortlink)).Methods("POST")
+	a.Router.Handle("/api/info", m.ThenFunc(a.GetShortlinkInfo)).Methods("GET")
+	a.Router.Handle("/{shortlink:[a-zA-Z0-9]{1,11}}", m.ThenFunc(a.Redirect)).Methods("GET")
 }
 
 func (a *App) CreateShortlink(writer http.ResponseWriter, request *http.Request) {
@@ -57,6 +67,7 @@ func (a *App) GetShortlinkInfo(writer http.ResponseWriter, request *http.Request
 	parameters := request.URL.Query()
 	shortlink := parameters.Get("shortlink")
 	fmt.Printf("%s\n", shortlink)
+	//panic(shortlink) // 手动panic
 }
 
 func (a *App) Redirect(writer http.ResponseWriter, request *http.Request) {
