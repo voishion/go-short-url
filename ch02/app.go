@@ -14,14 +14,14 @@ type App struct {
 	Router *mux.Router
 }
 
-// shortenReq 短链请求体
-type shortenReq struct {
+// ShortenReq 短链请求体
+type ShortenReq struct {
 	URL                 string `json:"url" validate:"nonzero"`
 	ExpirationInMinutes int64  `json:"expiration_in_minutes" validate:"min=0"`
 }
 
-// shortlinkResp 短链响应体
-type shortlinkResp struct {
+// ShortlinkResp 短链响应体
+type ShortlinkResp struct {
 	Shortlink string `json:"shortlink"`
 }
 
@@ -30,17 +30,17 @@ func (a *App) Initialize() {
 	// Set log formatter
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	a.Router = mux.NewRouter()
-	a.initializeRoutes()
+	a.InitializeRoutes()
 }
 
-func (a *App) initializeRoutes() {
-	a.Router.HandleFunc("/api/shorten", a.createShortlink).Methods("POST")
-	a.Router.HandleFunc("/api/info", a.getShortlinkInfo).Methods("POST")
-	a.Router.HandleFunc("/{shortlink:[a-zA-Z0-9]{1,11}}", a.redirect).Methods("GET")
+func (a *App) InitializeRoutes() {
+	a.Router.HandleFunc("/api/shorten", a.CreateShortlink).Methods("POST")
+	a.Router.HandleFunc("/api/info", a.GetShortlinkInfo).Methods("POST")
+	a.Router.HandleFunc("/{shortlink:[a-zA-Z0-9]{1,11}}", a.Redirect).Methods("GET")
 }
 
-func (a *App) createShortlink(writer http.ResponseWriter, request *http.Request) {
-	var req shortenReq
+func (a *App) CreateShortlink(writer http.ResponseWriter, request *http.Request) {
+	var req ShortenReq
 	if err := json.NewDecoder(request.Body).Decode(&req); err != nil {
 		return
 	}
@@ -51,13 +51,13 @@ func (a *App) createShortlink(writer http.ResponseWriter, request *http.Request)
 	fmt.Printf("%v\n", req)
 }
 
-func (a *App) getShortlinkInfo(writer http.ResponseWriter, request *http.Request) {
+func (a *App) GetShortlinkInfo(writer http.ResponseWriter, request *http.Request) {
 	parameters := request.URL.Query()
 	shortlink := parameters.Get("shortlink")
 	fmt.Printf("%s\n", shortlink)
 }
 
-func (a *App) redirect(writer http.ResponseWriter, request *http.Request) {
+func (a *App) Redirect(writer http.ResponseWriter, request *http.Request) {
 	parameters := mux.Vars(request)
 	fmt.Printf("%s\n", parameters["shortlink"])
 }
