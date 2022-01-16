@@ -62,19 +62,38 @@ func (a *App) CreateShortlink(writer http.ResponseWriter, request *http.Request)
 		return
 	}
 	defer request.Body.Close()
-	fmt.Printf("%v\n", req)
+	//fmt.Printf("%v\n", req)
+
+	s, err := a.Config.S.Shorten(req.URL, req.ExpirationInMinutes)
+	if err != nil {
+		ResponseWithError(writer, err)
+	} else {
+		ResponseWithJSON(writer, http.StatusCreated, ShortlinkResp{Shortlink: s})
+	}
 }
 
 func (a *App) GetShortlinkInfo(writer http.ResponseWriter, request *http.Request) {
 	parameters := request.URL.Query()
 	shortlink := parameters.Get("shortlink")
-	fmt.Printf("%s\n", shortlink)
+	//fmt.Printf("%s\n", shortlink)
 	//panic(shortlink) // 手动panic
+	detail, err := a.Config.S.ShortlinkInfo(shortlink)
+	if err != nil {
+		ResponseWithError(writer, err)
+	} else {
+		ResponseWithJSON(writer, http.StatusOK, detail)
+	}
 }
 
 func (a *App) Redirect(writer http.ResponseWriter, request *http.Request) {
 	parameters := mux.Vars(request)
-	fmt.Printf("%s\n", parameters["shortlink"])
+	//fmt.Printf("%s\n", parameters["shortlink"])
+	u, err := a.Config.S.Unshorten(parameters["shortlink"])
+	if err != nil {
+		ResponseWithError(writer, err)
+	} else {
+		http.Redirect(writer, request, u, http.StatusTemporaryRedirect)
+	}
 }
 
 func ResponseWithError(writer http.ResponseWriter, err error) {

@@ -7,7 +7,7 @@ import (
 )
 
 type Env struct {
-	C *RedisClient
+	S Storage
 }
 
 func GetEnv() *Env {
@@ -29,5 +29,5 @@ func GetEnv() *Env {
 	}
 	log.Printf("connect to redis (addr:%s, passwd:%s, db:%d)", addr, passwd, db)
 	client := NewRedisClient(addr, passwd, db)
-	return &Env{C: client}
+	return &Env{S: client}
 }

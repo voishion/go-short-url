@@ -2,7 +2,6 @@ package main
 
 // Storage 存储接口
 type Storage interface {
-
 	// Shorten 将正常地址转成短地址
 	Shorten(url string, exp int64) (string, error)
 
