@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"github.com/go-redis/redis/v8"
+	"github.com/mattheath/base62"
 	"time"
 )
 
@@ -44,4 +47,69 @@ func NewRedisClient(addr string, passwd string, db int) *RedisClient {
 		panic(err)
 	}
 	return &RedisClient{Client: client}
+}
+
+// Shorten convert url to shortlink
+func (r *RedisClient) Shorten(url string, exp int64) (string, error) {
+	// convent url to sha1 hash
+	h := toSha1(url)
+
+	// fetch it if the url is cached
+	d, err := r.Client.Get(ctx, fmt.Sprintf(URL_HASH_KEY, h)).Result()
+	if err == redis.Nil {
+		// not existed, nothing to do
+	} else if err != nil {
+		return "", err
+	} else {
+		if d == "{}" {
+			// expiration, nothing to do
+		} else {
+			return d, nil
+		}
+	}
+
+	// increase the global counter
+	err = r.Client.Incr(ctx, URL_ID_KEY).Err()
+	if err != nil {
+		return "", err
+	}
+
+	// encode global counter to base62
+	id, err := r.Client.Get(ctx, URL_ID_KEY).Int64()
+	if err != nil {
+		return "", err
+	}
+	eid := base62.EncodeInt64(id)
+
+	// store the url against this encoded id
+	err = r.Client.Set(ctx, fmt.Sprintf(SHORT_LINK_URL_KEY, eid), url, time.Minute*time.Duration(exp)).Err()
+	if err != nil {
+		return "", err
+	}
+
+	// store the url against the hash of it
+	err = r.Client.Set(ctx, fmt.Sprintf(URL_HASH_KEY, h), eid, time.Minute*time.Duration(exp)).Err()
+	if err != nil {
+		return "", err
+	}
+
+	detail, err := json.Marshal(&URLDetail{
+		URL:                 url,
+		CreateAt:            time.Now().String(),
+		ExpirationInMinutes: time.Duration(exp)})
+	if err != nil {
+		return "", err
+	}
+
+	// store the url detail against this encoded id
+	err = r.Client.Set(ctx, fmt.Sprintf(SHORT_LINK_DETAIL_KEY, eid), detail, time.Minute*time.Duration(exp)).Err()
+	if err != nil {
+		return "", err
+	}
+
+	return eid, nil
+}
+
+func toSha1(url string) interface{} {
+	return nil
 }
