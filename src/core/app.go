@@ -15,6 +15,7 @@ import (
 type App struct {
 	Router     *mux.Router
 	Middleware *middleware.Middleware
+	Config     *Env
 }
 
 // ShortenReq 短链请求体
@@ -29,9 +30,10 @@ type ShortlinkResp struct {
 }
 
 // Initialize is initialization of App
-func (a *App) Initialize() {
+func (a *App) Initialize(e *Env) {
 	// Set log formatter
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	a.Config = e
 	a.Router = mux.NewRouter()
 	a.Middleware = &middleware.Middleware{}
 	a.InitializeRoutes()

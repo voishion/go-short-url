@@ -43,6 +43,5 @@ func NewRedisClient(addr string, passwd string, db int) *RedisClient {
 	if _, err := client.Ping(ctx).Result(); err != nil {
 		panic(err)
 	}
-
 	return &RedisClient{Client: client}
 }
