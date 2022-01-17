@@ -11,7 +11,7 @@ import (
 	"net/http"
 )
 
-// App encapsulates Env, Router and middleware
+// App encapsulates Config, Router and Middleware
 type App struct {
 	Router     *mux.Router
 	Middleware *middleware.Middleware
