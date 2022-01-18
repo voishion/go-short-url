@@ -47,7 +47,7 @@ func (a *App) InitializeRoutes() {
 	// Alice包的使用，合并中间件
 	m := alice.New(a.Middleware.LoggingHandler, a.Middleware.RecoverHandler)
 	a.Router.Handle("/api/shorten", m.ThenFunc(a.CreateShortlink)).Methods("POST")
-	a.Router.Handle("/api/info", m.ThenFunc(a.GetShortlinkInfo)).Methods("GET")
+	a.Router.Handle("/api/info", m.ThenFunc(a.GetShortlinkInfo)).Methods("GET").Queries("url", "{url}")
 	a.Router.Handle("/{shortlink:[a-zA-Z0-9]{1,11}}", m.ThenFunc(a.Redirect)).Methods("GET")
 }
 
@@ -74,10 +74,10 @@ func (a *App) CreateShortlink(writer http.ResponseWriter, request *http.Request)
 
 func (a *App) GetShortlinkInfo(writer http.ResponseWriter, request *http.Request) {
 	parameters := request.URL.Query()
-	shortlink := parameters.Get("shortlink")
-	//fmt.Printf("%s\n", shortlink)
-	//panic(shortlink) // 手动panic
-	detail, err := a.Config.S.ShortlinkInfo(shortlink)
+	shortUrl := parameters.Get("url")
+	//fmt.Printf("%s\n", shortUrl)
+	//panic(shortUrl) // 手动panic
+	detail, err := a.Config.S.ShortlinkInfo(shortUrl)
 	if err != nil {
 		ResponseWithError(writer, err)
 	} else {
